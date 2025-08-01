@@ -10,7 +10,7 @@ pipeline {
         ECR_REPOSITORY = 'new/imp-repo'
         IMAGE_TAG = "${BUILD_NUMBER}"
         IMAGE_NAME = "${ECR_REGISTRY}/${ECR_REPOSITORY}"
-        AWS_CREDENTIALS_ID = 'aws-ecr-credentials' // Set this to match your Jenkins credentials ID
+        AWS_CREDENTIALS_ID = 'aws-ecr-credentials'### aws-ecr-credentials
     }
     stages {      
         stage('Build Maven') {
