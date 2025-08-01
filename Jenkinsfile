@@ -1,52 +1,43 @@
 pipeline {
     agent any
-    
     tools {
-        maven 'maven3'  // Make sure this name matches your Jenkins tool configuration
-        jdk 'JDK8'      // Make sure this name matches your Jenkins tool configuration
+        maven 'maven3'
+        jdk 'JDK8'
     }
-    
     environment {
         AWS_REGION = 'us-east-1'
         ECR_REGISTRY = '935598635277.dkr.ecr.us-east-1.amazonaws.com'
         ECR_REPOSITORY = 'new/imp-repo'
-        IMAGE_TAG = "${BUILD_NUMBER}"
-        AWS_CREDENTIALS_ID = 'aws-ecr-credentials'
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        IMAGE_NAME = "${ECR_REGISTRY}/${ECR_REPOSITORY}"
+        AWS_CREDENTIALS_ID = 'aws-ecr-credentials'  // Update this to your actual Jenkins credential ID
     }
-    
     stages {
         stage('Build Maven') {
-            steps { 
-                sh 'pwd'      
+            steps {
                 sh 'mvn clean install package'
             }
         }
-        
         stage('Copy Artifact') {
-            steps { 
-                sh 'pwd'
+            steps {
                 sh 'cp -r target/*.jar docker'
             }
         }
-         
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build image with ECR-compatible naming
-                    dockerImage = docker.build("${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}", "./docker")
+                    dockerImage = docker.build("${IMAGE_NAME}:${IMAGE_TAG}", "./docker")
                 }
             }
         }
-        
         stage('Push to ECR') {
-    steps {
-        script {
-            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: "${AWS_CREDENTIALS_ID}"]]) {
-                sh """
-                    aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-                    docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
-                    docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
-                """
+            steps {
+                script {
+                    docker.withRegistry("https://${ECR_REGISTRY}", "ecr:${AWS_REGION}:${AWS_CREDENTIALS_ID}") {
+                        dockerImage.push("${IMAGE_TAG}")
+                        dockerImage.push("latest")
+                    }
+                }
             }
         }
     }
